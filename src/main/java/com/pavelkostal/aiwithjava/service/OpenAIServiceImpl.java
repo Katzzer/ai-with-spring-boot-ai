@@ -1,5 +1,9 @@
 package com.pavelkostal.aiwithjava.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.pavelkostal.aiwithjava.model.Answer;
 import com.pavelkostal.aiwithjava.model.GetCapitalRequest;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
@@ -15,9 +19,11 @@ import java.util.Map;
 public class OpenAIServiceImpl implements OpenAIService {
 
     private final ChatModel chatModel;
+    private final ObjectMapper objectMapper;
 
-    public OpenAIServiceImpl(ChatModel chatModel) {
+    public OpenAIServiceImpl(ChatModel chatModel, ObjectMapper objectMapper) {
         this.chatModel = chatModel;
+        this.objectMapper = objectMapper;
     }
 
     @Value("classpath:templates/get-capital-prompt.st")
@@ -28,12 +34,13 @@ public class OpenAIServiceImpl implements OpenAIService {
 
 
     @Override
-    public String getCapital(GetCapitalRequest getCapitalRequest) {
+    public Answer getCapital(GetCapitalRequest getCapitalRequest) {
         PromptTemplate promptTemplate = new PromptTemplate(getCapitalPrompt);
         Prompt prompt = promptTemplate.create(Map.of("stateOrCountry", getCapitalRequest));
         ChatResponse response = chatModel.call(prompt);
 
-        return response.getResult().getOutput().getContent();
+//        return response.getResult().getOutput().getContent();
+        return mapToAnswer(response);
     }
 
     @Override
@@ -62,5 +69,16 @@ public class OpenAIServiceImpl implements OpenAIService {
             return String.join(" ", java.util.Arrays.copyOf(words, wordLimit));
         }
         return text;
+    }
+
+    private Answer mapToAnswer(ChatResponse response) {
+        String responseString;
+        try {
+            JsonNode jsonNode = objectMapper.readTree(response.getResult().getOutput().getContent());
+            responseString = jsonNode.get("answer").asText();
+        } catch (JsonProcessingException e) {
+           throw new RuntimeException(e);
+        }
+        return new Answer(responseString);
     }
 }
