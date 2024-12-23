@@ -23,6 +23,11 @@ public class QuestionController {
         return new Answer(openAIService.getAnswer(question.question()));
     }
 
+    @PostMapping(value = "/movie-info")
+    public Answer askMovieInfo(@RequestBody Question question) {
+        return openAIService.getMovieInfo(question);
+    }
+
     @PostMapping("/capital")
     public GetCapitalResponse getCapital(@RequestBody GetCapitalRequest getCapitalRequest) {
         return openAIService.getCapital(getCapitalRequest);
