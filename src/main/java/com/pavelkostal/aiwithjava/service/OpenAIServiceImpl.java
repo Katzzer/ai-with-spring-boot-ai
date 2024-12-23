@@ -5,10 +5,12 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pavelkostal.aiwithjava.model.Answer;
 import com.pavelkostal.aiwithjava.model.GetCapitalRequest;
+import com.pavelkostal.aiwithjava.model.GetCapitalResponse;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.chat.prompt.PromptTemplate;
+import org.springframework.ai.converter.BeanOutputConverter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
@@ -34,13 +36,20 @@ public class OpenAIServiceImpl implements OpenAIService {
 
 
     @Override
-    public Answer getCapital(GetCapitalRequest getCapitalRequest) {
+    public GetCapitalResponse getCapital(GetCapitalRequest getCapitalRequest) {
+        BeanOutputConverter<GetCapitalResponse> parser = new BeanOutputConverter<>(GetCapitalResponse.class);
+        String format = parser.getFormat();
+
         PromptTemplate promptTemplate = new PromptTemplate(getCapitalPrompt);
-        Prompt prompt = promptTemplate.create(Map.of("stateOrCountry", getCapitalRequest));
+        Prompt prompt = promptTemplate.create(Map.of(
+                "stateOrCountry", getCapitalRequest,
+                "format", format)
+        );
+
         ChatResponse response = chatModel.call(prompt);
 
 //        return response.getResult().getOutput().getContent();
-        return mapToAnswer(response);
+        return parser.convert(response.getResult().getOutput().getContent());
     }
 
     @Override
@@ -71,14 +80,14 @@ public class OpenAIServiceImpl implements OpenAIService {
         return text;
     }
 
-    private Answer mapToAnswer(ChatResponse response) {
-        String responseString;
-        try {
-            JsonNode jsonNode = objectMapper.readTree(response.getResult().getOutput().getContent());
-            responseString = jsonNode.get("answer").asText();
-        } catch (JsonProcessingException e) {
-           throw new RuntimeException(e);
-        }
-        return new Answer(responseString);
-    }
+//    private Answer mapToAnswer(ChatResponse response) {
+//        String responseString;
+//        try {
+//            JsonNode jsonNode = objectMapper.readTree(response.getResult().getOutput().getContent());
+//            responseString = jsonNode.get("answer").asText();
+//        } catch (JsonProcessingException e) {
+//           throw new RuntimeException(e);
+//        }
+//        return new Answer(responseString);
+//    }
 }
