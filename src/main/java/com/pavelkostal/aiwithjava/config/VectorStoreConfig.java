@@ -1,6 +1,6 @@
 package com.pavelkostal.aiwithjava.config;
 
-import groovy.util.logging.Slf4j;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.reader.tika.TikaDocumentReader;
 import org.springframework.ai.transformer.splitter.TextSplitter;
@@ -13,7 +13,6 @@ import org.springframework.ai.document.Document;
 import java.io.File;
 import java.util.List;
 
-@lombok.extern.slf4j.Slf4j
 @Slf4j
 @Configuration
 public class VectorStoreConfig {
