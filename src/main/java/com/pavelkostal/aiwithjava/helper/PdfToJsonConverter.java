@@ -1,7 +1,6 @@
 package com.pavelkostal.aiwithjava.helper;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.tika.Tika;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.exception.TikaException;
 import org.apache.tika.parser.AutoDetectParser;
@@ -23,7 +22,7 @@ public class PdfToJsonConverter {
                         .getResource("sourceData/studijni-a-zkusebni-rad-univerzity-hradec-kralove-2021.pdf"))
                         .getPath();
 
-        Path resourceDirectory = Path.of("src/main/resources/data/studijni-a-zkusebni-rad-univerzity-hradec-kralove-2021.json");
+        Path resourceDirectory = Path.of("src/main/resources/sourceData/studijni-a-zkusebni-rad-univerzity-hradec-kralove-2021.json");
         String outputFilePath = resourceDirectory.toAbsolutePath().toString();
 
         try {
@@ -31,13 +30,12 @@ public class PdfToJsonConverter {
             Map<String, Object> jsonOutput = new HashMap<>();
 
             // Step 1: Extract metadata and text using Apache Tika
-            Tika tika = new Tika();
             Metadata metadata = new Metadata();
             BodyContentHandler handler = new BodyContentHandler(-1); // No buffer size limit for large files
             AutoDetectParser parser = new AutoDetectParser();
             ParseContext context = new ParseContext();
 
-            try (FileInputStream inputStream = new FileInputStream(new File(inputFilePath))) {
+            try (FileInputStream inputStream = new FileInputStream(inputFilePath)) {
                 parser.parse(inputStream, handler, metadata, context);
             }
 

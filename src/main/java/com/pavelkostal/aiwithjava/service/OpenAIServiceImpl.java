@@ -1,8 +1,5 @@
 package com.pavelkostal.aiwithjava.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pavelkostal.aiwithjava.model.Answer;
 import com.pavelkostal.aiwithjava.model.GetCapitalRequest;
 import com.pavelkostal.aiwithjava.model.GetCapitalResponse;
@@ -42,7 +39,7 @@ public class OpenAIServiceImpl implements OpenAIService {
     @Value("classpath:templates/rag-prompt-template.st")
     private Resource ragPromptTemplate;
 
-    @Value("classpath:templates/uhk-prompt-template.st")
+    @Value("classpath:templates/uhk-rag-prompt-template.st")
     private Resource uhkPromptTemplate;
 
     @Override
