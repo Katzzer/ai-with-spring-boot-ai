@@ -26,7 +26,6 @@ import java.util.Map;
 public class OpenAIServiceImpl implements OpenAIService {
 
     private final ChatModel chatModel;
-//    private final ObjectMapper objectMapper;
     private final SimpleVectorStore vectorStore;
 
     public OpenAIServiceImpl(ChatModel chatModel, SimpleVectorStore vectorStore) {
@@ -43,6 +42,28 @@ public class OpenAIServiceImpl implements OpenAIService {
     @Value("classpath:templates/rag-prompt-template.st")
     private Resource ragPromptTemplate;
 
+    @Value("classpath:templates/uhk-prompt-template.st")
+    private Resource uhkPromptTemplate;
+
+    @Override
+    public Answer askUhkInfo(Question question) {
+        // TODO: implement it
+        List<Document> documents = vectorStore.similaritySearch(SearchRequest
+                .query(question.question()).withTopK(4));
+        List<String> contentList = documents.stream().map(Document::getContent).toList();
+
+        // only for debugging
+        contentList.forEach(System.out::println);
+
+        PromptTemplate promptTemplate = new PromptTemplate(uhkPromptTemplate);
+        Prompt prompt = promptTemplate.create(Map.of(
+                "input", question.question(),
+                "documents", String.join("\n", contentList)));
+
+        ChatResponse response = chatModel.call(prompt);
+
+        return new Answer(response.getResult().getOutput().getContent());
+    }
 
     @Override
     public Answer getMovieInfo(Question question) {
@@ -50,6 +71,7 @@ public class OpenAIServiceImpl implements OpenAIService {
                .query(question.question()).withTopK(4));
        List<String> contentList = documents.stream().map(Document::getContent).toList();
 
+        // only for debugging
        contentList.forEach(System.out::println);
 
         PromptTemplate promptTemplate = new PromptTemplate(ragPromptTemplate);

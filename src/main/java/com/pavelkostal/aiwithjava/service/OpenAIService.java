@@ -14,4 +14,6 @@ public interface OpenAIService {
     String getCapitalWithInfo(GetCapitalRequest getCapitalRequest);
 
     Answer getMovieInfo(Question question);
+
+    Answer askUhkInfo(Question question);
 }

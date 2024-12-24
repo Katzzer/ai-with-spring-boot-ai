@@ -19,8 +19,13 @@ public class QuestionController {
     }
 
     @PostMapping
-    public Answer askQuestion(@RequestBody Question question) {
+    public Answer askGeneralQuestion(@RequestBody Question question) {
         return new Answer(openAIService.getAnswer(question.question()));
+    }
+
+    @PostMapping(value = "/uhk-info")
+    public Answer askUhkInfo(@RequestBody Question question) {
+        return openAIService.askUhkInfo(question);
     }
 
     @PostMapping(value = "/movie-info")
