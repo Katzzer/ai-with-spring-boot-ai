@@ -1,13 +1,10 @@
 package com.pavelkostal.aiwithjava.service;
 
-import com.pavelkostal.aiwithjava.model.Answer;
-import com.pavelkostal.aiwithjava.model.GetCapitalRequest;
-import com.pavelkostal.aiwithjava.model.GetCapitalResponse;
-import com.pavelkostal.aiwithjava.model.Question;
+import com.pavelkostal.aiwithjava.model.*;
 
 public interface OpenAIService {
 
-    String getAnswer(String question);
+    String askGeneralQuestion(String question);
 
     GetCapitalResponse getCapital(GetCapitalRequest getCapitalRequest);
 
@@ -16,4 +13,6 @@ public interface OpenAIService {
     Answer getMovieInfo(Question question);
 
     Answer askUhkInfo(Question question);
+
+    String askQuestion(QuestionFromWeb questionFromWeb);
 }

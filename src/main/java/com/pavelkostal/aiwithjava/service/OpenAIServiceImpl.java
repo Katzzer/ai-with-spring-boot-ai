@@ -1,9 +1,6 @@
 package com.pavelkostal.aiwithjava.service;
 
-import com.pavelkostal.aiwithjava.model.Answer;
-import com.pavelkostal.aiwithjava.model.GetCapitalRequest;
-import com.pavelkostal.aiwithjava.model.GetCapitalResponse;
-import com.pavelkostal.aiwithjava.model.Question;
+import com.pavelkostal.aiwithjava.model.*;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
@@ -43,8 +40,23 @@ public class OpenAIServiceImpl implements OpenAIService {
     private Resource uhkPromptTemplate;
 
     @Override
+    public String askQuestion(QuestionFromWeb questionFromWeb) {
+        QuestionTypeEnum questionTypeEnum = QuestionTypeEnum.fromString(questionFromWeb.getQuestionTypeString());
+        Question question = new Question(questionFromWeb.getQuestion());
+        GetCapitalRequest getCapitalRequest = new GetCapitalRequest(question.question());
+
+        return switch (questionTypeEnum) {
+            case GENERAL_QUESTION -> askGeneralQuestion(question.question());
+            case FILM_QUESTION -> getMovieInfo(question).answer();
+            case UHK_DOCUMENTATION -> askUhkInfo(question).answer();
+            case CAPITAL_CITY_QUESTION -> getCapital(getCapitalRequest).answer(); // TODO: refactor this method
+            case CAPITAL_CITY_WITH_MORE_INFO_QUESTION -> getCapitalWithInfo(getCapitalRequest);
+        };
+    }
+
+    @Override
     public Answer askUhkInfo(Question question) {
-        // TODO: implement it
+        // TODO: merge it with getMovieInfo()
         List<Document> documents = vectorStore.similaritySearch(SearchRequest
                 .query(question.question()).withTopK(4));
         List<String> contentList = documents.stream().map(Document::getContent).toList();
@@ -94,7 +106,6 @@ public class OpenAIServiceImpl implements OpenAIService {
 
         ChatResponse response = chatModel.call(prompt);
 
-//        return response.getResult().getOutput().getContent();
         return parser.convert(response.getResult().getOutput().getContent());
     }
 
@@ -108,7 +119,7 @@ public class OpenAIServiceImpl implements OpenAIService {
     }
 
     @Override
-    public String getAnswer(String question) {
+    public String askGeneralQuestion(String question) { // TODO: change to question
         String limitedQuestion = limitWords(question, 20);
         PromptTemplate promptTemplate = new PromptTemplate("Provide a very short response: " + limitedQuestion);
         Prompt prompt = promptTemplate.create();
@@ -126,14 +137,4 @@ public class OpenAIServiceImpl implements OpenAIService {
         return text;
     }
 
-//    private Answer mapToAnswer(ChatResponse response) {
-//        String responseString;
-//        try {
-//            JsonNode jsonNode = objectMapper.readTree(response.getResult().getOutput().getContent());
-//            responseString = jsonNode.get("answer").asText();
-//        } catch (JsonProcessingException e) {
-//           throw new RuntimeException(e);
-//        }
-//        return new Answer(responseString);
-//    }
 }

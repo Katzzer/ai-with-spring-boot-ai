@@ -20,7 +20,7 @@ public class QuestionController {
 
     @PostMapping
     public Answer askGeneralQuestion(@RequestBody Question question) {
-        return new Answer(openAIService.getAnswer(question.question()));
+        return new Answer(openAIService.askGeneralQuestion(question.question()));
     }
 
     @PostMapping(value = "/uhk-info")

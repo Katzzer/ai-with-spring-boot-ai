@@ -16,7 +16,7 @@ public record GetCapitalRequest(String stateOrCountry) {
 
         // Further limitations or validation logic can be added here
         // Example: ensure it only contains alphabetic characters
-        if (!stateOrCountry.matches("[a-zA-Z ]+")) {
+        if (!stateOrCountry.matches("[a-zA-Z0-9 ]+")) {
             throw new IllegalArgumentException("stateOrCountry can only contain alphabets and spaces");
         }
     }

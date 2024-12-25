@@ -1,13 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Demo Prompt</title>
-    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        /* Add a nice gradient background */
         body {
             background: linear-gradient(135deg, #6a11cb, #2575fc);
             min-height: 100vh;
@@ -28,64 +26,104 @@
 </head>
 <body>
 <div class="container mt-5">
-    <h1 class="text-center mb-4">Welcome</h1>
+    <h1 class="text-center mb-4">AI Prompt Demo Page</h1>
 
-    <!-- Options to Select Type of Question -->
-    <div class="mb-4">
-        <label for="questionType" class="form-label">Choose what you'd like to ask about:</label>
-        <select id="questionType" class="form-select">
-            <option value="" selected disabled>Select an option</option>
-            <option value="film">Films</option>
-            <option value="document">University Document</option>
-        </select>
-    </div>
+    <form id="questionForm" method="post" th:object="${questionFromWeb}">
+        <div class="mb-4">
+            <label for="questionType" class="form-label">Choose what you'd like to ask about:</label>
+            <select id="questionType" class="form-select" th:field="*{questionTypeString}" required>
+                <option value="" selected>Select an option</option>
+                <option value="general_question">General Question</option>
+                <option value="uhk_documentation">University Document</option>
+                <option value="film_question">Film Question</option>
+                <option value="capital_city_question">Capital City Question</option>
+                <option value="capital_city_with_more_info_question">Capital City With More Info Question</option>
+            </select>
+        </div>
 
-    <!-- Input for question about films -->
-    <div class="mb-4" id="filmInput" style="display: none;">
-        <label for="filmQuestion" class="form-label">Ask a question about films</label>
-        <input type="text" id="filmQuestion" class="form-control" placeholder="What do you want to know about films?">
-    </div>
+        <div class="mb-4" id="questionInputWrapper" style="display: none;">
+            <label for="questionInput" class="form-label">Ask a question about films</label>
+            <input type="text" id="questionInput" class="form-control" th:field="*{question}" placeholder="Enter your question here">
+        </div>
 
-    <!-- Input for question from a university document -->
-    <div class="mb-4" id="documentInput" style="display: none;">
-        <label for="documentQuestion" class="form-label">Ask a question from a university document</label>
-        <input type="text" id="documentQuestion" class="form-control" placeholder="What do you want to know from the document?">
-    </div>
+        <div class="text-center mb-4">
+            <button type="submit" class="btn btn-primary btn-lg">Submit</button>
+        </div>
+    </form>
 
-    <!-- Submit Button -->
-    <div class="text-center mb-4">
-        <button type="button" class="btn btn-primary btn-lg">Submit</button>
-    </div>
-
-    <!-- Output area -->
-    <div class="mt-4 p-3 border rounded bg-light text-dark">
+    <div class="mt-4 p-3 border rounded bg-light text-dark" id="responseMessage">
         <h5>Output</h5>
         <p id="output" class="mb-0">No output yet.</p>
     </div>
 </div>
 
-<!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    // JavaScript to toggle the visibility of input fields
     const questionTypeSelect = document.getElementById('questionType');
-    const filmInput = document.getElementById('filmInput');
-    const documentInput = document.getElementById('documentInput');
+    const questionInputWrapper = document.getElementById('questionInputWrapper');
+    const questionInput = document.getElementById('questionInput');
 
-    // Event Listener for the dropdown change
     questionTypeSelect.addEventListener('change', () => {
-        const selectedValue = questionTypeSelect.value;
-
-        if (selectedValue === 'film') {
-            filmInput.style.display = 'block';
-            documentInput.style.display = 'none';
-        } else if (selectedValue === 'document') {
-            filmInput.style.display = 'none';
-            documentInput.style.display = 'block';
-        } else {
-            filmInput.style.display = 'none';
-            documentInput.style.display = 'none';
+        switch (questionTypeSelect.value) {
+            case '': {
+                questionInputWrapper.style.display = 'none';
+                break;
+            }
+            case 'general_question': {
+                questionInputWrapper.style.display = 'block';
+                questionInputWrapper.querySelector("label").innerText = 'Ask general question.';
+                questionInput.placeholder = 'E.g.: Who is the president of the United States?';
+                questionInput.value = '';
+                break;
+            }
+            case "uhk_documentation": {
+                questionInputWrapper.style.display = 'block';
+                questionInputWrapper.querySelector("label").innerText = 'What do you want to know from UHK Documentation';
+                questionInput.placeholder = 'E.g.: Is it possible to repeat final exam?';
+                questionInput.value = '';
+                break;
+            }
+            case "film_question": {
+                questionInputWrapper.style.display = 'block';
+                questionInputWrapper.querySelector("label").innerText = 'What do you want to know about films?';
+                questionInput.placeholder = 'E.g.: What is the plot of the film Spider-Man 2?';
+                questionInput.value = '';
+                break;
+            }
+            case "capital_city_question": {
+                questionInputWrapper.style.display = 'block';
+                questionInputWrapper.querySelector("label").innerText = 'Ask about capital city.';
+                questionInput.placeholder = 'E.g.: What is the capital of France?';
+                questionInput.value = '';
+                break;
+            }
+            case "capital_city_with_more_info_question": {
+                questionInputWrapper.style.display = 'block';
+                questionInputWrapper.querySelector("label").innerText = 'Ask about capital city. You will get more information.';
+                questionInput.placeholder = 'E.g.: What is the capital of France?';
+                questionInput.value = '';
+                break;
+            }
         }
+    });
+
+    document.getElementById("questionForm").addEventListener("submit", function(event) {
+        event.preventDefault();
+
+        const form = event.target;
+        const formData = new FormData(form);
+
+        fetch("/submit", {
+            method: "POST",
+            body: formData
+        })
+            .then(response => response.text())
+            .then(data => {
+                document.querySelector("#responseMessage p").innerHTML = data;
+            })
+            .catch(err => {
+                console.error("Error submitting form:", err);
+            });
     });
 </script>
 </body>

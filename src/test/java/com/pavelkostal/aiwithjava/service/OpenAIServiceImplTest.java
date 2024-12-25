@@ -13,8 +13,8 @@ class OpenAIServiceImplTest {
     OpenAIService openAIService;
 
     @Test
-    void getAnswer() {
-        String answer = openAIService.getAnswer("Why is Java more popular than Kotlin");
+    void askGeneralQuestion() {
+        String answer = openAIService.askGeneralQuestion("Why is Java more popular than Kotlin");
         System.out.println(answer);
         assertNotNull(answer);
     }
