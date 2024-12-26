@@ -149,7 +149,7 @@ public class OpenAIServiceImpl implements OpenAIService {
             throw new BadRequestException(errorMessage);
         }
 
-        if (!question.matches("[a-zA-Z0-9áÁčČďĎéÉěĚíÍňŇóÓřŘšŠťŤúÚůŮýÝžŽ _\\-,.]+")) {
+        if (!question.matches("[a-zA-Z0-9áÁčČďĎéÉěĚíÍňŇóÓřŘšŠťŤúÚůŮýÝžŽ _\\-,.\\']+")) {
             String errorMessage = "Question can only contain alphabets and spaces";
             saveInvalidPromptDataToDB(questionFromWeb, errorMessage);
             throw new BadRequestException(errorMessage);

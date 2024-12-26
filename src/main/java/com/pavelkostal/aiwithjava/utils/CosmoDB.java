@@ -54,7 +54,7 @@ public class CosmoDB {
                 .endpoint(AccountSettings.HOST)
                 .key(AccountSettings.MASTER_KEY)
                 .preferredRegions(preferredRegions)
-                .userAgentSuffix("CosmosDBJavaQuickstart")
+                .userAgentSuffix("CosmosDBJavaAIPromptDemo")
                 .consistencyLevel(ConsistencyLevel.EVENTUAL)
                 .buildClient();
 
