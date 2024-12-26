@@ -2,7 +2,9 @@ package com.pavelkostal.aiwithjava.utils;
 
 import com.azure.cosmos.*;
 import com.azure.cosmos.models.*;
+import com.azure.cosmos.util.CosmosPagedIterable;
 import com.pavelkostal.aiwithjava.model.PromptDBItem;
+import com.pavelkostal.aiwithjava.model.QuestionTypeEnum;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
 
@@ -28,6 +30,19 @@ public class CosmoDB {
         log.info("Created item with request charge of {} within duration {}",
                 item.getRequestCharge(),
                 item.getDuration());
+    }
+
+    public ArrayList<PromptDBItem> readItemsFromDB(QuestionTypeEnum questionTypeEnum) {
+        intiDb();
+
+        CosmosPagedIterable<PromptDBItem> items = container.readAllItems(
+                new PartitionKey(questionTypeEnum.getQuestionType()),
+                PromptDBItem.class
+        );
+
+        ArrayList<PromptDBItem> itemList = new ArrayList<>();
+        items.forEach(itemList::add);
+        return itemList;
     }
 
     private void intiDb() {
