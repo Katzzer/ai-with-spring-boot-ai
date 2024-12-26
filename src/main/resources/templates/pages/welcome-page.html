@@ -107,7 +107,7 @@
         }
     });
 
-    document.getElementById("questionForm").addEventListener("submit", function(event) {
+    document.getElementById("questionForm").addEventListener("submit", function (event) {
         event.preventDefault();
 
         const form = event.target;
@@ -115,14 +115,28 @@
 
         fetch("/submit", {
             method: "POST",
-            body: formData
+            body: formData,
         })
-            .then(response => response.text())
+            .then(response => {
+                // Check if the response status is OK (status 200-299)
+                if (!response.ok) {
+                    // Extract error message returned by the server
+                    return response.text().then(errMessage => {
+                        throw new Error(errMessage || "Something went wrong.");
+                    });
+                }
+                // If status is OK, return the response in text format for further processing
+                return response.text();
+            })
             .then(data => {
+                console.log(data);
+                // Display the server's response message in a specified element
                 document.querySelector("#responseMessage p").innerHTML = data;
             })
             .catch(err => {
                 console.error("Error submitting form:", err);
+                // Display a user-friendly error message
+                document.querySelector("#responseMessage p").innerHTML = `Error: ${err.message}`;
             });
     });
 </script>

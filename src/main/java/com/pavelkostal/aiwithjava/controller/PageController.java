@@ -1,8 +1,9 @@
-package com.pavelkostal.aiwithjava.controllers;
+package com.pavelkostal.aiwithjava.controller;
 
 import com.pavelkostal.aiwithjava.model.QuestionFromWeb;
 import com.pavelkostal.aiwithjava.service.OpenAIService;
 import lombok.AllArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,12 +20,13 @@ public class PageController {
     @GetMapping("/")
     public String showForm(Model model) {
         model.addAttribute("questionFromWeb", new QuestionFromWeb());
-        return "welcome-page";
+        return "pages/welcome-page";
     }
 
     @PostMapping("/submit")
     @ResponseBody
-    public String handleQuestionAjax(@ModelAttribute("questionFromWeb") QuestionFromWeb questionFromWeb) {
-       return openAIService.askQuestion(questionFromWeb);
+    public ResponseEntity<String> handleQuestionAjax(@ModelAttribute("questionFromWeb") QuestionFromWeb questionFromWeb) {
+        String response = openAIService.askQuestion(questionFromWeb);
+        return ResponseEntity.ok(response);
     }
 }

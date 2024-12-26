@@ -1,5 +1,6 @@
 package com.pavelkostal.aiwithjava.service;
 
+import com.pavelkostal.aiwithjava.exceptionHandling.BadRequestException;
 import com.pavelkostal.aiwithjava.model.*;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
@@ -27,101 +28,86 @@ public class OpenAIServiceImpl implements OpenAIService {
         this.vectorStore = vectorStore;
     }
 
-    @Value("classpath:templates/get-capital-prompt.st")
+    @Value("classpath:templates/prompts/get-capital-prompt.st")
     private Resource getCapitalPrompt;
 
-    @Value("classpath:templates/get-capital-with-info.st")
+    @Value("classpath:templates/prompts/get-capital-with-info.st")
     private Resource getCapitalPromptWithInfo;
 
-    @Value("classpath:templates/rag-prompt-template.st")
-    private Resource ragPromptTemplate;
+    @Value("classpath:templates/prompts/rag-prompt-template.st")
+    private Resource movieRagPromptTemplate;
 
-    @Value("classpath:templates/uhk-rag-prompt-template.st")
+    @Value("classpath:templates/prompts/uhk-rag-prompt-template.st")
     private Resource uhkPromptTemplate;
 
     @Override
     public String askQuestion(QuestionFromWeb questionFromWeb) {
+
         QuestionTypeEnum questionTypeEnum = QuestionTypeEnum.fromString(questionFromWeb.getQuestionTypeString());
-        Question question = new Question(questionFromWeb.getQuestion());
-        GetCapitalRequest getCapitalRequest = new GetCapitalRequest(question.question());
+        String question = questionFromWeb.getQuestion();
+        checkPrompt(question, questionTypeEnum);
 
         return switch (questionTypeEnum) {
-            case GENERAL_QUESTION -> askGeneralQuestion(question.question());
-            case FILM_QUESTION -> getMovieInfo(question).answer();
-            case UHK_DOCUMENTATION -> askUhkInfo(question).answer();
-            case CAPITAL_CITY_QUESTION -> getCapital(getCapitalRequest).answer(); // TODO: refactor this method
-            case CAPITAL_CITY_WITH_MORE_INFO_QUESTION -> getCapitalWithInfo(getCapitalRequest);
+            case GENERAL_QUESTION -> askGeneralQuestion(question);
+            case FILM_QUESTION, UHK_DOCUMENTATION -> getDataFromVectorStore(question, questionTypeEnum);
+            case CAPITAL_CITY_QUESTION -> getCapital(question);
+            case CAPITAL_CITY_WITH_MORE_INFO_QUESTION -> getCapitalWithInfo(question);
         };
     }
 
-    @Override
-    public Answer askUhkInfo(Question question) {
-        // TODO: merge it with getMovieInfo()
+    private String getDataFromVectorStore(String question, QuestionTypeEnum questionTypeEnum) {
         List<Document> documents = vectorStore.similaritySearch(SearchRequest
-                .query(question.question()).withTopK(4));
+                .query(question).withTopK(4));
         List<String> contentList = documents.stream().map(Document::getContent).toList();
 
         // only for debugging
         contentList.forEach(System.out::println);
 
-        PromptTemplate promptTemplate = new PromptTemplate(uhkPromptTemplate);
+        Resource resource = movieRagPromptTemplate;
+        if (questionTypeEnum == QuestionTypeEnum.UHK_DOCUMENTATION) {
+            resource = uhkPromptTemplate;
+        }
+
+        PromptTemplate promptTemplate = new PromptTemplate(resource);
         Prompt prompt = promptTemplate.create(Map.of(
-                "input", question.question(),
+                "input", question,
                 "documents", String.join("\n", contentList)));
 
-        ChatResponse response = chatModel.call(prompt);
-
-        return new Answer(response.getResult().getOutput().getContent());
-    }
-
-    @Override
-    public Answer getMovieInfo(Question question) {
-       List<Document> documents = vectorStore.similaritySearch(SearchRequest
-               .query(question.question()).withTopK(4));
-       List<String> contentList = documents.stream().map(Document::getContent).toList();
-
-        // only for debugging
-       contentList.forEach(System.out::println);
-
-        PromptTemplate promptTemplate = new PromptTemplate(ragPromptTemplate);
-        Prompt prompt = promptTemplate.create(Map.of(
-                "input", question.question(),
-                "documents", String.join("\n", contentList)));
-
-        ChatResponse response = chatModel.call(prompt);
-
-        return new Answer(response.getResult().getOutput().getContent());
-    }
-
-    @Override
-    public GetCapitalResponse getCapital(GetCapitalRequest getCapitalRequest) {
-        BeanOutputConverter<GetCapitalResponse> parser = new BeanOutputConverter<>(GetCapitalResponse.class);
-        String format = parser.getFormat();
-
-        PromptTemplate promptTemplate = new PromptTemplate(getCapitalPrompt);
-        Prompt prompt = promptTemplate.create(Map.of(
-                "stateOrCountry", getCapitalRequest,
-                "format", format)
-        );
-
-        ChatResponse response = chatModel.call(prompt);
-
-        return parser.convert(response.getResult().getOutput().getContent());
-    }
-
-    @Override
-    public String getCapitalWithInfo(GetCapitalRequest getCapitalRequest) {
-        PromptTemplate promptTemplate = new PromptTemplate(getCapitalPromptWithInfo);
-        Prompt prompt = promptTemplate.create(Map.of("stateOrCountry", getCapitalRequest));
         ChatResponse response = chatModel.call(prompt);
 
         return response.getResult().getOutput().getContent();
     }
 
-    @Override
-    public String askGeneralQuestion(String question) { // TODO: change to question
-        String limitedQuestion = limitWords(question, 20);
-        PromptTemplate promptTemplate = new PromptTemplate("Provide a very short response: " + limitedQuestion);
+    private String getCapital(String question) {
+        BeanOutputConverter<GetCapitalResponse> parser = new BeanOutputConverter<>(GetCapitalResponse.class);
+        String format = parser.getFormat();
+
+        PromptTemplate promptTemplate = new PromptTemplate(getCapitalPrompt);
+        Prompt prompt = promptTemplate.create(Map.of(
+                "stateOrCountry", question,
+                "format", format)
+        );
+
+        ChatResponse response = chatModel.call(prompt);
+
+        return response.getResult().getOutput().getContent();
+        //        return parser.convert(response.getResult().getOutput().getContent());
+    }
+
+    private String getCapitalWithInfo(String question) { // TODO: convert it to JSON and show it on web with more info
+//        BeanOutputConverter<GetCapitalResponse> parser = new BeanOutputConverter<>(GetCapitalResponse.class);
+//        String format = parser.getFormat();
+
+        PromptTemplate promptTemplate = new PromptTemplate(getCapitalPromptWithInfo);
+        Prompt prompt = promptTemplate.create(Map.of("stateOrCountry", question));
+        ChatResponse response = chatModel.call(prompt);
+
+        return response.getResult().getOutput().getContent();
+//        return parser.convert(response.getResult().getOutput().getContent());
+    }
+
+    private String askGeneralQuestion(String question) {
+        PromptTemplate promptTemplate = new PromptTemplate("Provide a very short response: " + question); // TODO: use PromptTemplate
         Prompt prompt = promptTemplate.create();
 
         ChatResponse response = chatModel.call(prompt);
@@ -129,12 +115,23 @@ public class OpenAIServiceImpl implements OpenAIService {
         return response.getResult().getOutput().getContent();
     }
 
-    private String limitWords(String text, int wordLimit) {
-        String[] words = text.split("\\s+");
-        if (words.length > wordLimit) {
-            return String.join(" ", java.util.Arrays.copyOf(words, wordLimit));
+    private void checkPrompt(String text, QuestionTypeEnum questionTypeEnum) {
+        int maxQuestionLength = 20;
+        if (questionTypeEnum.equals(QuestionTypeEnum.GENERAL_QUESTION)) {
+            maxQuestionLength = 50;
         }
-        return text;
+
+        if (text == null || text.trim().isEmpty()) {
+            throw new BadRequestException("Question cannot be null or empty");
+        }
+
+        if (text.length() > maxQuestionLength) {
+            throw new BadRequestException("Question cannot exceed "+ maxQuestionLength + "  characters");
+        }
+
+        if (!text.matches("[a-zA-Z0-9áÁčČďĎéÉěĚíÍňŇóÓřŘšŠťŤúÚůŮýÝžŽ ]+")) {
+            throw new BadRequestException("Question can only contain alphabets and spaces");
+        }
     }
 
 }
