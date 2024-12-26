@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Demo Prompt</title>
+    <title>AI Prompt Demo</title>
+    <link rel="icon" type="image/png" href="/AI.png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body {
@@ -12,7 +13,7 @@
             color: white;
         }
         .container {
-            background: rgba(255, 255, 255, 0.15); /* Semi-transparent background for content */
+            background: rgba(255, 255, 255, 0.15);
             padding: 2rem;
             border-radius: 10px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.25);
@@ -21,6 +22,16 @@
             font-family: 'Arial', sans-serif;
             font-weight: bold;
             text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.75);
+        }
+        footer {
+            text-align: center;
+            margin-top: 20px;
+            color: white;
+            font-size: 16px;
+            opacity: 0.8;
+        }
+        footer a {
+            color: white;
         }
     </style>
 </head>
@@ -57,6 +68,10 @@
     </div>
 </div>
 
+<footer>
+    <div>Created by <a href="https://www.pavelkostal.com"><u>Pavel Kostal</u></a></div>
+</footer>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     const questionTypeSelect = document.getElementById('questionType');
@@ -92,15 +107,15 @@
             }
             case "capital_city_question": {
                 questionInputWrapper.style.display = 'block';
-                questionInputWrapper.querySelector("label").innerText = 'Ask about capital city.';
-                questionInput.placeholder = 'E.g.: What is the capital of France?';
+                questionInputWrapper.querySelector("label").innerText = 'Ask what is capital city of country.';
+                questionInput.placeholder = 'E.g.: France';
                 questionInput.value = '';
                 break;
             }
             case "capital_city_with_more_info_question": {
                 questionInputWrapper.style.display = 'block';
-                questionInputWrapper.querySelector("label").innerText = 'Ask about capital city. You will get more information.';
-                questionInput.placeholder = 'E.g.: What is the capital of France?';
+                questionInputWrapper.querySelector("label").innerText = 'Ask what is capital city of country. You will get more information. Response is in JSON format.';
+                questionInput.placeholder = 'E.g.: France';
                 questionInput.value = '';
                 break;
             }
@@ -118,24 +133,19 @@
             body: formData,
         })
             .then(response => {
-                // Check if the response status is OK (status 200-299)
                 if (!response.ok) {
-                    // Extract error message returned by the server
                     return response.text().then(errMessage => {
                         throw new Error(errMessage || "Something went wrong.");
                     });
                 }
-                // If status is OK, return the response in text format for further processing
                 return response.text();
             })
             .then(data => {
                 console.log(data);
-                // Display the server's response message in a specified element
                 document.querySelector("#responseMessage p").innerHTML = data;
             })
             .catch(err => {
                 console.error("Error submitting form:", err);
-                // Display a user-friendly error message
                 document.querySelector("#responseMessage p").innerHTML = `Error: ${err.message}`;
             });
     });

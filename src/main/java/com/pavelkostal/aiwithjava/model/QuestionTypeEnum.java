@@ -7,19 +7,16 @@ public enum QuestionTypeEnum {
     CAPITAL_CITY_QUESTION("capital_city_question"),
     CAPITAL_CITY_WITH_MORE_INFO_QUESTION("capital_city_with_more_info_question");
 
-    private final String question; // Declare as final to ensure immutability
+    private final String question;
 
-    // Constructor to set the value of the `question` field
     QuestionTypeEnum(String question) {
         this.question = question;
     }
 
-    // Getter for the `question` field
     public String question() {
         return question;
     }
 
-    // Static method to create an enum from a String
     public static QuestionTypeEnum fromString(String text) {
         for (QuestionTypeEnum type : QuestionTypeEnum.values()) {
             if (type.question.equalsIgnoreCase(text)) {

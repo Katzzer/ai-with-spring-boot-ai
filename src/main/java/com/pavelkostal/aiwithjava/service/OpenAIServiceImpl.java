@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Service
 public class OpenAIServiceImpl implements OpenAIService {
@@ -31,14 +32,17 @@ public class OpenAIServiceImpl implements OpenAIService {
     @Value("classpath:templates/prompts/get-capital-prompt.st")
     private Resource getCapitalPrompt;
 
-    @Value("classpath:templates/prompts/get-capital-with-info.st")
-    private Resource getCapitalPromptWithInfo;
+    @Value("classpath:templates/prompts/get-capital-prompt-with-more-info.st")
+    private Resource getCapitalPromptWithMoreInfo;
 
     @Value("classpath:templates/prompts/rag-prompt-template.st")
     private Resource movieRagPromptTemplate;
 
     @Value("classpath:templates/prompts/uhk-rag-prompt-template.st")
     private Resource uhkPromptTemplate;
+
+    @Value("classpath:templates/prompts/general-question-prompt-template.st")
+    private Resource generalQuestionPromptTemplate;
 
     @Override
     public String askQuestion(QuestionFromWeb questionFromWeb) {
@@ -50,8 +54,8 @@ public class OpenAIServiceImpl implements OpenAIService {
         return switch (questionTypeEnum) {
             case GENERAL_QUESTION -> askGeneralQuestion(question);
             case FILM_QUESTION, UHK_DOCUMENTATION -> getDataFromVectorStore(question, questionTypeEnum);
-            case CAPITAL_CITY_QUESTION -> getCapital(question);
-            case CAPITAL_CITY_WITH_MORE_INFO_QUESTION -> getCapitalWithInfo(question);
+            case CAPITAL_CITY_QUESTION -> getCapitalOfCountry(question);
+            case CAPITAL_CITY_WITH_MORE_INFO_QUESTION -> getCapitalOfCountryWithMoreInfo(question);
         };
     }
 
@@ -78,37 +82,37 @@ public class OpenAIServiceImpl implements OpenAIService {
         return response.getResult().getOutput().getContent();
     }
 
-    private String getCapital(String question) {
-        BeanOutputConverter<GetCapitalResponse> parser = new BeanOutputConverter<>(GetCapitalResponse.class);
-        String format = parser.getFormat();
+    private String getCapitalOfCountry(String question) {
 
         PromptTemplate promptTemplate = new PromptTemplate(getCapitalPrompt);
         Prompt prompt = promptTemplate.create(Map.of(
-                "stateOrCountry", question,
-                "format", format)
-        );
+                "stateOrCountry", question));
 
         ChatResponse response = chatModel.call(prompt);
 
         return response.getResult().getOutput().getContent();
-        //        return parser.convert(response.getResult().getOutput().getContent());
     }
 
-    private String getCapitalWithInfo(String question) { // TODO: convert it to JSON and show it on web with more info
-//        BeanOutputConverter<GetCapitalResponse> parser = new BeanOutputConverter<>(GetCapitalResponse.class);
-//        String format = parser.getFormat();
+    private String getCapitalOfCountryWithMoreInfo(String question) {
+        BeanOutputConverter<CapitalWithMoreInfoResponse> parser = new BeanOutputConverter<>(CapitalWithMoreInfoResponse.class);
+        String format = parser.getFormat();
 
-        PromptTemplate promptTemplate = new PromptTemplate(getCapitalPromptWithInfo);
-        Prompt prompt = promptTemplate.create(Map.of("stateOrCountry", question));
+        PromptTemplate promptTemplate = new PromptTemplate(getCapitalPromptWithMoreInfo);
+        Prompt prompt = promptTemplate.create(Map.of(
+                "stateOrCountry", question,
+                "format", format
+        ));
         ChatResponse response = chatModel.call(prompt);
 
-        return response.getResult().getOutput().getContent();
-//        return parser.convert(response.getResult().getOutput().getContent());
+        return Objects.requireNonNull(parser.convert(response.getResult().getOutput().getContent())).toString();
     }
 
     private String askGeneralQuestion(String question) {
-        PromptTemplate promptTemplate = new PromptTemplate("Provide a very short response: " + question); // TODO: use PromptTemplate
-        Prompt prompt = promptTemplate.create();
+        PromptTemplate promptTemplate = new PromptTemplate(generalQuestionPromptTemplate);
+        Map<String, Object> variables = Map.of(
+                "question", question //
+        );
+        Prompt prompt = promptTemplate.create(variables);
 
         ChatResponse response = chatModel.call(prompt);
 
@@ -129,8 +133,12 @@ public class OpenAIServiceImpl implements OpenAIService {
             throw new BadRequestException("Question cannot exceed "+ maxQuestionLength + "  characters");
         }
 
-        if (!text.matches("[a-zA-Z0-9áÁčČďĎéÉěĚíÍňŇóÓřŘšŠťŤúÚůŮýÝžŽ ]+")) {
+        if (!text.matches("[a-zA-Z0-9áÁčČďĎéÉěĚíÍňŇóÓřŘšŠťŤúÚůŮýÝžŽ _\\-,.]+")) {
             throw new BadRequestException("Question can only contain alphabets and spaces");
+        }
+
+        if (text.toLowerCase().contains("ignore") || text.toLowerCase().contains("bypass") || text.contains("ignoruj")) {
+            throw new BadRequestException("Do not use words like ignore or bypass");
         }
     }
 

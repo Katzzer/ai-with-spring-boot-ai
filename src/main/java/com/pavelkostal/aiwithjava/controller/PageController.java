@@ -20,7 +20,7 @@ public class PageController {
     @GetMapping("/")
     public String showForm(Model model) {
         model.addAttribute("questionFromWeb", new QuestionFromWeb());
-        return "pages/welcome-page";
+        return "pages/prompt-page";
     }
 
     @PostMapping("/submit")
