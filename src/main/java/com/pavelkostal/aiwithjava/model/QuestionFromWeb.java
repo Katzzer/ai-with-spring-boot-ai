@@ -10,4 +10,5 @@ import lombok.NoArgsConstructor;
 public class QuestionFromWeb {
     private String questionTypeString;
     private String question;
+    private QuestionTypeEnum questionTypeEnum;
 }

@@ -1,0 +1,78 @@
+package com.pavelkostal.aiwithjava.utils;
+
+import com.azure.cosmos.*;
+import com.azure.cosmos.models.*;
+import com.pavelkostal.aiwithjava.model.PromptDBItem;
+import lombok.extern.log4j.Log4j2;
+import org.springframework.stereotype.Service;
+
+import java.util.ArrayList;
+
+@Service
+@Log4j2
+public class CosmoDB {
+
+    private CosmosClient client;
+
+    private final String databaseName = "AI_Prompt";
+    private final String containerName = "ListOfPrompts";
+
+    private CosmosDatabase database;
+    private CosmosContainer container;
+
+    public void saveDataToDB(PromptDBItem promptDBItem) {
+        intiDb();
+
+        log.info("Saving prompt to DB: {}", promptDBItem);
+        CosmosItemResponse<PromptDBItem> item = container.createItem(promptDBItem, new PartitionKey(promptDBItem.partitionKey()), new CosmosItemRequestOptions());
+        log.info("Created item with request charge of {} within duration {}",
+                item.getRequestCharge(),
+                item.getDuration());
+    }
+
+    private void intiDb() {
+        ArrayList<String> preferredRegions = new ArrayList<>();
+        preferredRegions.add("West US");
+
+        //  Create sync client
+        client = new CosmosClientBuilder()
+                .endpoint(AccountSettings.HOST)
+                .key(AccountSettings.MASTER_KEY)
+                .preferredRegions(preferredRegions)
+                .userAgentSuffix("CosmosDBJavaQuickstart")
+                .consistencyLevel(ConsistencyLevel.EVENTUAL)
+                .buildClient();
+
+        try {
+            createDatabaseIfNotExists();
+            createContainerIfNotExists();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+    }
+
+    private void createDatabaseIfNotExists() {
+        System.out.println("Create database " + databaseName + " if not exists.");
+
+        //  Create database if not exists
+        CosmosDatabaseResponse databaseResponse = client.createDatabaseIfNotExists(databaseName);
+        database = client.getDatabase(databaseResponse.getProperties().getId());
+
+        System.out.println("Checking database " + database.getId() + " completed!\n");
+    }
+
+    private void createContainerIfNotExists() {
+        System.out.println("Create container " + containerName + " if not exists.");
+
+        //  Create container if not exists
+        CosmosContainerProperties containerProperties =
+                new CosmosContainerProperties(containerName, "/partitionKey");
+
+        CosmosContainerResponse containerResponse = database.createContainerIfNotExists(containerProperties);
+        container = database.getContainer(containerResponse.getProperties().getId());
+
+        System.out.println("Checking container " + container.getId() + " completed!\n");
+    }
+
+}

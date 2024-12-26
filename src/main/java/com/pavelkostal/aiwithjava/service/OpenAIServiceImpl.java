@@ -2,6 +2,9 @@ package com.pavelkostal.aiwithjava.service;
 
 import com.pavelkostal.aiwithjava.exceptionHandling.BadRequestException;
 import com.pavelkostal.aiwithjava.model.*;
+import com.pavelkostal.aiwithjava.utils.CosmoDB;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.log4j.Log4j2;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
@@ -17,17 +20,16 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 
 @Service
+@RequiredArgsConstructor
+@Log4j2
 public class OpenAIServiceImpl implements OpenAIService {
 
     private final ChatModel chatModel;
     private final SimpleVectorStore vectorStore;
-
-    public OpenAIServiceImpl(ChatModel chatModel, SimpleVectorStore vectorStore) {
-        this.chatModel = chatModel;
-        this.vectorStore = vectorStore;
-    }
+    private final CosmoDB cosmoDB;
 
     @Value("classpath:templates/prompts/get-capital-prompt.st")
     private Resource getCapitalPrompt;
@@ -46,100 +48,172 @@ public class OpenAIServiceImpl implements OpenAIService {
 
     @Override
     public String askQuestion(QuestionFromWeb questionFromWeb) {
-
         QuestionTypeEnum questionTypeEnum = QuestionTypeEnum.fromString(questionFromWeb.getQuestionTypeString());
-        String question = questionFromWeb.getQuestion();
-        checkPrompt(question, questionTypeEnum);
+        questionFromWeb.setQuestionTypeEnum(questionTypeEnum);
+        logQuestion(questionFromWeb);
+        checkPrompt(questionFromWeb);
 
         return switch (questionTypeEnum) {
-            case GENERAL_QUESTION -> askGeneralQuestion(question);
-            case FILM_QUESTION, UHK_DOCUMENTATION -> getDataFromVectorStore(question, questionTypeEnum);
-            case CAPITAL_CITY_QUESTION -> getCapitalOfCountry(question);
-            case CAPITAL_CITY_WITH_MORE_INFO_QUESTION -> getCapitalOfCountryWithMoreInfo(question);
+            case GENERAL_QUESTION -> askGeneralQuestion(questionFromWeb);
+            case FILM_QUESTION, UHK_DOCUMENTATION -> getDataFromVectorStore(questionFromWeb);
+            case CAPITAL_CITY_QUESTION -> getCapitalOfCountry(questionFromWeb);
+            case CAPITAL_CITY_WITH_MORE_INFO_QUESTION -> getCapitalOfCountryWithMoreInfo(questionFromWeb);
         };
     }
 
-    private String getDataFromVectorStore(String question, QuestionTypeEnum questionTypeEnum) {
+    private String getDataFromVectorStore(QuestionFromWeb questionFromWeb) {
         List<Document> documents = vectorStore.similaritySearch(SearchRequest
-                .query(question).withTopK(4));
+                .query(questionFromWeb.getQuestion()).withTopK(4));
         List<String> contentList = documents.stream().map(Document::getContent).toList();
 
         // only for debugging
         contentList.forEach(System.out::println);
 
         Resource resource = movieRagPromptTemplate;
-        if (questionTypeEnum == QuestionTypeEnum.UHK_DOCUMENTATION) {
+        if (questionFromWeb.getQuestionTypeEnum().equals(QuestionTypeEnum.UHK_DOCUMENTATION)) {
             resource = uhkPromptTemplate;
         }
 
         PromptTemplate promptTemplate = new PromptTemplate(resource);
         Prompt prompt = promptTemplate.create(Map.of(
-                "input", question,
+                "input", questionFromWeb,
                 "documents", String.join("\n", contentList)));
 
         ChatResponse response = chatModel.call(prompt);
 
+        saveCompletedPromptDataToDB(questionFromWeb, response, prompt);
+        logPrompt(response);
         return response.getResult().getOutput().getContent();
     }
 
-    private String getCapitalOfCountry(String question) {
+    private String getCapitalOfCountry(QuestionFromWeb questionFromWeb) {
 
         PromptTemplate promptTemplate = new PromptTemplate(getCapitalPrompt);
         Prompt prompt = promptTemplate.create(Map.of(
-                "stateOrCountry", question));
+                "stateOrCountry", questionFromWeb.getQuestion()));
 
         ChatResponse response = chatModel.call(prompt);
 
+        saveCompletedPromptDataToDB(questionFromWeb, response, prompt);
+        logPrompt(response);
         return response.getResult().getOutput().getContent();
     }
 
-    private String getCapitalOfCountryWithMoreInfo(String question) {
+    private String getCapitalOfCountryWithMoreInfo(QuestionFromWeb questionFromWeb) {
         BeanOutputConverter<CapitalWithMoreInfoResponse> parser = new BeanOutputConverter<>(CapitalWithMoreInfoResponse.class);
         String format = parser.getFormat();
 
         PromptTemplate promptTemplate = new PromptTemplate(getCapitalPromptWithMoreInfo);
         Prompt prompt = promptTemplate.create(Map.of(
-                "stateOrCountry", question,
+                "stateOrCountry", questionFromWeb.getQuestion(),
                 "format", format
         ));
         ChatResponse response = chatModel.call(prompt);
 
+        saveCompletedPromptDataToDB(questionFromWeb, response, prompt);
+        logPrompt(response);
         return Objects.requireNonNull(parser.convert(response.getResult().getOutput().getContent())).toString();
     }
 
-    private String askGeneralQuestion(String question) {
+    private String askGeneralQuestion(QuestionFromWeb questionFromWeb) {
         PromptTemplate promptTemplate = new PromptTemplate(generalQuestionPromptTemplate);
         Map<String, Object> variables = Map.of(
-                "question", question //
+                "question", questionFromWeb.getQuestion() //
         );
         Prompt prompt = promptTemplate.create(variables);
 
         ChatResponse response = chatModel.call(prompt);
 
+        saveCompletedPromptDataToDB(questionFromWeb, response, prompt);
+        logPrompt(response);
         return response.getResult().getOutput().getContent();
     }
 
-    private void checkPrompt(String text, QuestionTypeEnum questionTypeEnum) {
-        int maxQuestionLength = 20;
-        if (questionTypeEnum.equals(QuestionTypeEnum.GENERAL_QUESTION)) {
+    private void checkPrompt(QuestionFromWeb questionFromWeb) {
+        String question = questionFromWeb.getQuestion();
+
+        int maxQuestionLength = 30;
+        if (questionFromWeb.getQuestionTypeEnum().equals(QuestionTypeEnum.GENERAL_QUESTION)) {
             maxQuestionLength = 50;
         }
 
-        if (text == null || text.trim().isEmpty()) {
-            throw new BadRequestException("Question cannot be null or empty");
+        if (question == null || question.trim().isEmpty()) {
+            String errorMessage = "Question cannot be null or empty";
+            saveInvalidPromptDataToDB(questionFromWeb, errorMessage);
+            throw new BadRequestException(errorMessage);
         }
 
-        if (text.length() > maxQuestionLength) {
-            throw new BadRequestException("Question cannot exceed "+ maxQuestionLength + "  characters");
+        if (question.length() > maxQuestionLength) {
+            String errorMessage = "Question cannot exceed " + maxQuestionLength + "  characters";
+            saveInvalidPromptDataToDB(questionFromWeb, errorMessage);
+            throw new BadRequestException(errorMessage);
         }
 
-        if (!text.matches("[a-zA-Z0-9áÁčČďĎéÉěĚíÍňŇóÓřŘšŠťŤúÚůŮýÝžŽ _\\-,.]+")) {
-            throw new BadRequestException("Question can only contain alphabets and spaces");
+        if (!question.matches("[a-zA-Z0-9áÁčČďĎéÉěĚíÍňŇóÓřŘšŠťŤúÚůŮýÝžŽ _\\-,.]+")) {
+            String errorMessage = "Question can only contain alphabets and spaces";
+            saveInvalidPromptDataToDB(questionFromWeb, errorMessage);
+            throw new BadRequestException(errorMessage);
         }
 
-        if (text.toLowerCase().contains("ignore") || text.toLowerCase().contains("bypass") || text.contains("ignoruj")) {
-            throw new BadRequestException("Do not use words like ignore or bypass");
+        if (question.toLowerCase().contains("ignore") || question.toLowerCase().contains("bypass") || question.toLowerCase().contains("ignoruj")) {
+            String errorMessage = "Do not use words like ignore or bypass";
+            saveInvalidPromptDataToDB(questionFromWeb, errorMessage);
+            throw new BadRequestException(errorMessage);
         }
     }
 
+    private void logQuestion(QuestionFromWeb questionFromWeb) {
+        log.info("Question: {}, | Question typ: {}", questionFromWeb.getQuestion(), questionFromWeb.getQuestionTypeEnum().getQuestionType());
+    }
+
+    private void logPrompt(ChatResponse response) {
+        log.info("Response: {}", response.getResult().getOutput().getContent());
+    }
+
+    private void saveCompletedPromptDataToDB(QuestionFromWeb questionFromWeb, ChatResponse response, Prompt prompt) {
+        PromptDBItem promptDBItem = new PromptDBItem(
+                questionFromWeb.getQuestionTypeEnum().getQuestionType() + System.currentTimeMillis(),
+                questionFromWeb.getQuestionTypeEnum().getQuestionType(),
+                response.getMetadata().getModel(),
+                questionFromWeb.getQuestion(),
+                prompt.getContents(),
+                response.getResult().getOutput().getContent(),
+                response.getMetadata().getUsage().getPromptTokens(),
+                response.getMetadata().getUsage().getGenerationTokens(),
+                response.getMetadata().getUsage().getTotalTokens(),
+                false,
+                null
+        );
+
+        savePromptDataToDB(promptDBItem);
+    }
+
+    private void saveInvalidPromptDataToDB(QuestionFromWeb questionFromWeb, String errorMessage) {
+        PromptDBItem promptDBItem = new PromptDBItem(
+                questionFromWeb.getQuestionTypeEnum().getQuestionType() + System.currentTimeMillis(),
+                questionFromWeb.getQuestionTypeEnum().getQuestionType(),
+                null,
+                questionFromWeb.getQuestion(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                true,
+                errorMessage
+        );
+
+        savePromptDataToDB(promptDBItem);
+    }
+
+    protected void savePromptDataToDB(PromptDBItem promptDBItem) {
+
+        CompletableFuture.runAsync(() -> {
+            try {
+                cosmoDB.saveDataToDB(promptDBItem);
+            } catch (Exception e) {
+                log.error("Error occurred while saving prompt data: {}", e.getMessage());
+            }
+        });
+    }
 }

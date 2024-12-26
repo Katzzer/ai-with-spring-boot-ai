@@ -146,7 +146,7 @@
             })
             .catch(err => {
                 console.error("Error submitting form:", err);
-                document.querySelector("#responseMessage p").innerHTML = `Error: ${err.message}`;
+                document.querySelector("#responseMessage p").innerHTML = `Error message: ${err.message}`;
             });
     });
 </script>

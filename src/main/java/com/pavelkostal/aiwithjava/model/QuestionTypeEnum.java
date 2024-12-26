@@ -13,7 +13,7 @@ public enum QuestionTypeEnum {
         this.question = question;
     }
 
-    public String question() {
+    public String getQuestionType() {
         return question;
     }
 

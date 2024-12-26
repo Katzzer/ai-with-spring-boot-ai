@@ -16,7 +16,7 @@ class OpenAIServiceImplTest {
 
     @Test
     void askGeneralQuestion() {
-        QuestionFromWeb questionFromWeb = new QuestionFromWeb(QuestionTypeEnum.GENERAL_QUESTION.question(), "Why is Java more popular than Kotlin");
+        QuestionFromWeb questionFromWeb = new QuestionFromWeb(QuestionTypeEnum.GENERAL_QUESTION.getQuestionType(), "Why is Java more popular than Kotlin", QuestionTypeEnum.GENERAL_QUESTION);
         String answer = openAIService.askQuestion(questionFromWeb);
         System.out.println(answer);
         assertNotNull(answer);
