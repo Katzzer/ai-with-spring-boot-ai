@@ -33,6 +33,9 @@
         footer a {
             color: white;
         }
+        #charCount {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -56,9 +59,10 @@
             <label for="questionInput" class="form-label">Ask a question about films</label>
             <input type="text" id="questionInput" class="form-control" th:field="*{question}" placeholder="Enter your question here">
         </div>
+        <small id="charCount" class="text-light">0 characters</small>
 
         <div class="text-center mb-4">
-            <button type="submit" class="btn btn-primary btn-lg">Submit</button>
+            <button type="submit" class="btn btn-primary btn-lg" id="submitButton" disabled>Submit</button>
         </div>
     </form>
 
@@ -122,6 +126,15 @@
         }
     });
 
+    const charCount = document.getElementById('charCount');
+    const submitButton = document.getElementById("submitButton");
+    document.getElementById("questionInput").addEventListener("input", function (event) {
+        const inputValue = event.target.value;
+        submitButton.disabled = inputValue.trim() === "";
+        charCount.style.display = questionTypeSelect.value === "" ? "none" : "block";
+        charCount.innerText = `${questionInput.value.length} characters`;
+    });
+
     document.getElementById("questionForm").addEventListener("submit", function (event) {
         event.preventDefault();
 
@@ -146,7 +159,7 @@
             })
             .catch(err => {
                 console.error("Error submitting form:", err);
-                document.querySelector("#responseMessage p").innerHTML = `Error message: ${err.message}`;
+                document.querySelector("#responseMessage p").innerHTML = `${err.message}`;
             });
     });
 </script>

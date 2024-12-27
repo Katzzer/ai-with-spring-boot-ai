@@ -15,10 +15,6 @@ import java.util.ArrayList;
 public class CosmoDB {
 
     private CosmosClient client;
-
-    private final String databaseName = "AI_Prompt";
-    private final String containerName = "ListOfPrompts";
-
     private CosmosDatabase database;
     private CosmosContainer container;
 
@@ -68,6 +64,7 @@ public class CosmoDB {
     }
 
     private void createDatabaseIfNotExists() {
+        String databaseName = "AI_Prompt";
         System.out.println("Create database " + databaseName + " if not exists.");
 
         //  Create database if not exists
@@ -78,6 +75,7 @@ public class CosmoDB {
     }
 
     private void createContainerIfNotExists() {
+        String containerName = "ListOfPrompts";
         System.out.println("Create container " + containerName + " if not exists.");
 
         //  Create container if not exists
