@@ -1,5 +1,7 @@
 package com.pavelkostal.aiwithjava.model;
 
+import java.time.LocalDateTime;
+
 public record PromptDBItem(
         String id,
         String partitionKey,
@@ -11,6 +13,7 @@ public record PromptDBItem(
         Long generationTokens,
         Long totalTokens,
         boolean isInvalidPrompt,
-        String errorMessage
+        String errorMessage,
+        LocalDateTime localDateTime
 ) {
 }

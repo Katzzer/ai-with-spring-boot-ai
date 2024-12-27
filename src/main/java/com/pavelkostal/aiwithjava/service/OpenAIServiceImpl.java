@@ -17,10 +17,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
 
 @Service
 @RequiredArgsConstructor
@@ -150,7 +150,7 @@ public class OpenAIServiceImpl implements OpenAIService {
             throw new BadRequestException(errorMessage);
         }
 
-        if (!question.matches("[a-zA-Z0-9áÁčČďĎéÉěĚíÍňŇóÓřŘšŠťŤúÚůŮýÝžŽ _\\-,.\\']+")) {
+        if (!question.matches("[a-zA-Z0-9áÁčČďĎéÉěĚíÍňŇóÓřŘšŠťŤúÚůŮýÝžŽ _\\-,.']+")) {
             String errorMessage = "Question can only contain alphabets and spaces";
             saveInvalidPromptDataToDB(questionFromWeb, errorMessage);
             throw new BadRequestException(errorMessage);
@@ -183,10 +183,11 @@ public class OpenAIServiceImpl implements OpenAIService {
                 response.getMetadata().getUsage().getGenerationTokens(),
                 response.getMetadata().getUsage().getTotalTokens(),
                 false,
-                null
+                null,
+                LocalDateTime.now()
         );
 
-        savePromptDataToDB(promptDBItem);
+        cosmoDB.savePromptDataToDB(promptDBItem);
     }
 
     private void saveInvalidPromptDataToDB(QuestionFromWeb questionFromWeb, String errorMessage) {
@@ -201,20 +202,11 @@ public class OpenAIServiceImpl implements OpenAIService {
                 null,
                 null,
                 true,
-                errorMessage
+                errorMessage,
+                LocalDateTime.now()
         );
 
-        savePromptDataToDB(promptDBItem);
+        cosmoDB.savePromptDataToDB(promptDBItem);
     }
 
-    protected void savePromptDataToDB(PromptDBItem promptDBItem) {
-
-        CompletableFuture.runAsync(() -> {
-            try {
-                cosmoDB.saveDataToDB(promptDBItem);
-            } catch (Exception e) {
-                log.error("Error occurred while saving prompt data: {}", e.getMessage());
-            }
-        });
-    }
 }

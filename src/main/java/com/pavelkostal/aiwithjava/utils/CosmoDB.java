@@ -5,19 +5,33 @@ import com.azure.cosmos.models.*;
 import com.azure.cosmos.util.CosmosPagedIterable;
 import com.pavelkostal.aiwithjava.model.PromptDBItem;
 import com.pavelkostal.aiwithjava.model.QuestionTypeEnum;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.concurrent.CompletableFuture;
 
 @Service
 @Log4j2
+@RequiredArgsConstructor
 public class CosmoDB {
 
     private CosmosClient client;
     private CosmosDatabase database;
     private CosmosContainer container;
+    private final CosmosProperties cosmosProperties;
 
+    public void savePromptDataToDB(PromptDBItem promptDBItem) {
+
+        CompletableFuture.runAsync(() -> {
+            try {
+                saveDataToDB(promptDBItem);
+            } catch (Exception e) {
+                log.error("Error occurred while saving prompt data: {}", e.getMessage());
+            }
+        });
+    }
     public void saveDataToDB(PromptDBItem promptDBItem) {
         intiDb();
 
@@ -47,8 +61,8 @@ public class CosmoDB {
 
         //  Create sync client
         client = new CosmosClientBuilder()
-                .endpoint(AccountSettings.HOST)
-                .key(AccountSettings.MASTER_KEY)
+                .endpoint(cosmosProperties.getDatabase())
+                .key(cosmosProperties.getKey())
                 .preferredRegions(preferredRegions)
                 .userAgentSuffix("CosmosDBJavaAIPromptDemo")
                 .consistencyLevel(ConsistencyLevel.EVENTUAL)
