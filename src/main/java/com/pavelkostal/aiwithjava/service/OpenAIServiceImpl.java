@@ -134,7 +134,9 @@ public class OpenAIServiceImpl implements OpenAIService {
 
         int maxQuestionLength = 30;
         if (questionFromWeb.getQuestionTypeEnum().equals(QuestionTypeEnum.GENERAL_QUESTION) ||
-            questionFromWeb.getQuestionTypeEnum().equals(QuestionTypeEnum.FILM_QUESTION)) {
+            questionFromWeb.getQuestionTypeEnum().equals(QuestionTypeEnum.FILM_QUESTION) ||
+            questionFromWeb.getQuestionTypeEnum().equals(QuestionTypeEnum.UHK_DOCUMENTATION)
+        ) {
             maxQuestionLength = 50;
         }
 
