@@ -59,7 +59,6 @@ public class CosmoDB {
         ArrayList<String> preferredRegions = new ArrayList<>();
         preferredRegions.add("West US");
 
-        //  Create sync client
         client = new CosmosClientBuilder()
                 .endpoint(cosmosProperties.getDatabase())
                 .key(cosmosProperties.getKey())
@@ -81,7 +80,6 @@ public class CosmoDB {
         String databaseName = "AI_Prompt";
         System.out.println("Create database " + databaseName + " if not exists.");
 
-        //  Create database if not exists
         CosmosDatabaseResponse databaseResponse = client.createDatabaseIfNotExists(databaseName);
         database = client.getDatabase(databaseResponse.getProperties().getId());
 

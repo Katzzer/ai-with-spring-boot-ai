@@ -132,12 +132,12 @@ public class OpenAIServiceImpl implements OpenAIService {
     private void checkPrompt(QuestionFromWeb questionFromWeb) {
         String question = questionFromWeb.getQuestion();
 
-        int maxQuestionLength = 30;
+        int maxQuestionLength = 40;
         if (questionFromWeb.getQuestionTypeEnum().equals(QuestionTypeEnum.GENERAL_QUESTION) ||
             questionFromWeb.getQuestionTypeEnum().equals(QuestionTypeEnum.FILM_QUESTION) ||
             questionFromWeb.getQuestionTypeEnum().equals(QuestionTypeEnum.UHK_DOCUMENTATION)
         ) {
-            maxQuestionLength = 50;
+            maxQuestionLength = 60;
         }
 
         if (question == null || question.trim().isEmpty()) {
@@ -152,7 +152,7 @@ public class OpenAIServiceImpl implements OpenAIService {
             throw new BadRequestException(errorMessage);
         }
 
-        if (!question.matches("[a-zA-Z0-9áÁčČďĎéÉěĚíÍňŇóÓřŘšŠťŤúÚůŮýÝžŽ _\\-,.']+")) {
+        if (!question.matches("[a-zA-Z0-9áÁčČďĎéÉěĚíÍňŇóÓřŘšŠťŤúÚůŮýÝžŽ _\\-,.\\?']+")) {
             String errorMessage = "Question can only contain alphabets and spaces";
             saveInvalidPromptDataToDB(questionFromWeb, errorMessage);
             throw new BadRequestException(errorMessage);
